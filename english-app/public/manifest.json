@@ -1,0 +1,15 @@
+{
+  "name": "Step by Step",
+  "short_name": "Step",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDFDFD",
+  "theme_color": "#0F172A",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/transparent.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}
