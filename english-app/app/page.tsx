@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { 
-  Search, Volume2, MessageSquare, Home as HomeIcon, Clock, Star, Send, Loader2, 
+  Search, Volume2, MessageSquare, Clock, Send, Loader2, 
   Lightbulb, X, BookOpen, RefreshCw, BookmarkPlus, CheckCircle2, AlertCircle, Trash2, ChevronRight, Layers
 } from 'lucide-react';
 
@@ -33,6 +33,7 @@ export default function StepByStepApp() {
   const [word, setWord] = useState('');
   const [wordsList, setWordsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [activeIdiom, setActiveIdiom] = useState<any>(null);
   
@@ -86,7 +87,6 @@ export default function StepByStepApp() {
     }
   };
 
-  // 🟢 פונקציית העזר שפונה לתיקייה החדשה שיצרת (ולא לגוגל ישירות!)
   const fetchFromAPI = async (promptText: string) => {
     const res = await fetch('/api/gemini', {
       method: 'POST',
@@ -299,7 +299,15 @@ export default function StepByStepApp() {
         {activeTab === 'home' && (
           <div className="animate-in fade-in duration-500 pb-10">
             <div className="w-full relative mb-6">
-              <input type="text" value={word} onChange={(e) => setWord(e.target.value)} placeholder="Search a word..." disabled={loading} className="w-full p-4 pl-12 bg-white rounded-2xl border border-[#EAE1D8] shadow-sm text-[16px] font-bold outline-none focus:border-[#D97757] transition-colors" onKeyDown={(e) => e.key === 'Enter' && processAndSaveWord()} />
+              <input 
+                type="text" 
+                value={word} 
+                onChange={(e) => setWord(e.target.value)} 
+                placeholder="Search a word..." 
+                disabled={loading} 
+                className="w-full p-4 pl-12 bg-white rounded-2xl border border-[#EAE1D8] shadow-sm text-[16px] font-bold outline-none focus:border-[#D97757] transition-colors disabled:opacity-60 disabled:bg-[#f8fafc]" 
+                onKeyDown={(e) => e.key === 'Enter' && processAndSaveWord()} 
+              />
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#A69B95]" size={18} />
               {loading && <Loader2 className="absolute right-5 top-1/2 -translate-y-1/2 text-[#D97757] animate-spin" size={18} />}
             </div>
