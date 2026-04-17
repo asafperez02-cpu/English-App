@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
     }
 
-    // 🟢 שימוש בגרסת הייצור היציבה ביותר של מודל הפרו (V1)
+    // הכתובת היציבה (V1) למודל ה-Pro שלך
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${API_KEY.trim()}`,
       {
@@ -24,7 +24,6 @@ export async function POST(req: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      // אם גוגל עדיין טוען לעומס, נחזיר שגיאה מפורטת כדי שנדע מה קורה
       throw new Error(data.error?.message || "API Error");
     }
 
