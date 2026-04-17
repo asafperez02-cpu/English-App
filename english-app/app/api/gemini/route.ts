@@ -4,11 +4,16 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // 🔴 שים את מפתח ה-API שלך כאן:
-    const API_KEY = "AIzaSyBZT-NqerijMu9sy2-4ZymfmTb4NKDbH2I"; 
+    // 🟢 התיקון הסופר-חשוב: מושכים את המפתח מתוך משתני הסביבה המאובטחים של וורסל!
+    const API_KEY = process.env.GEMINI_API_KEY; 
+
+    if (!API_KEY) {
+      return NextResponse.json({ error: "API key is missing in environment variables." }, { status: 500 });
+    }
+
     const cleanKey = API_KEY.trim();
 
-    // 1. שואלים את גוגל אילו מודלים פתוחים וזמינים למפתח שלך!
+    // שואלים את גוגל אילו מודלים פתוחים וזמינים
     const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`);
     const modelsData = await modelsRes.json();
     
@@ -16,12 +21,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Key validation failed: " + JSON.stringify(modelsData) }, { status: 500 });
     }
 
-    // 2. מסננים את הרשימה רק למודלים שמאפשרים יצירת תוכן
     const usableModels = (modelsData.models || []).filter((m: any) => 
       m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent")
     );
 
-    // 3. בוחרים את המודל הראשון שזמין (מחפשים פלאש 1.5, אם אין אז כל פלאש, ואם אין אז כל מודל שפתוח)
     const bestModel = usableModels.find((m: any) => m.name.includes("1.5-flash")) 
                    || usableModels.find((m: any) => m.name.includes("flash")) 
                    || usableModels[0];
@@ -30,9 +33,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No valid models found for your API key." }, { status: 500 });
     }
 
-    console.log("Auto-selected model:", bestModel.name);
-
-    // 4. שולחים את הבקשה למודל המדויק והזמין שמצאנו! אין יותר 404.
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/${bestModel.name}:generateContent?key=${cleanKey}`,
       {
