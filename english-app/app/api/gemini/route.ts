@@ -9,9 +9,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
     }
 
-    // הכתובת היציבה (V1) למודל ה-Pro שלך
+    // ⚡️ שימוש בגרסה המהירה והמעודכנת ביותר (Latest) - הכי יציב שיש
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${API_KEY.trim()}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY.trim()}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
