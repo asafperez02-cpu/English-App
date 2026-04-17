@@ -9,7 +9,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
     }
 
-    // 🟢 עוברים לספינת הדגל: מודל הפרימיום היציב והחזק ביותר - gemini-1.5-pro
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY.trim()}`,
       {
