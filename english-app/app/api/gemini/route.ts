@@ -9,9 +9,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
     }
 
-    // 🟢 מודל 2.5 פלאש - המעודכן, החי והמהיר ביותר של גוגל היום ללקוחות VIP
+    // 🟢 שימוש בגרסת הייצור היציבה ביותר של מודל הפרו (V1)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY.trim()}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${API_KEY.trim()}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     const data = await response.json();
 
     if (!response.ok) {
+      // אם גוגל עדיין טוען לעומס, נחזיר שגיאה מפורטת כדי שנדע מה קורה
       throw new Error(data.error?.message || "API Error");
     }
 
