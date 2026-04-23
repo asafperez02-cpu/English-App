@@ -6,7 +6,7 @@ import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, u
 import { 
   Search, Volume2, MessageSquare, Clock, Send, Loader2, 
   Lightbulb, X, RefreshCw, BookmarkPlus, CheckCircle2, AlertCircle, Trash2, ChevronRight, Layers,
-  Keyboard, HelpCircle
+  HelpCircle, ArrowRight
 } from 'lucide-react';
 
 export default function StepByStepApp() {
@@ -27,10 +27,9 @@ export default function StepByStepApp() {
   const [isComparing, setIsComparing] = useState(false);
   const [compareResult, setCompareResult] = useState<any>(null);
 
-  // Active Practice State
-  const [practiceWord, setPracticeWord] = useState<any>(null);
-  const [practiceInput, setPracticeInput] = useState('');
-  const [showHint, setShowHint] = useState(false);
+  // Practice Tab State
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [isCardFlipped, setIsCardFlipped] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -57,43 +56,12 @@ export default function StepByStepApp() {
 
   useEffect(() => { if (activeTab === 'chat') chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages, activeTab]);
 
-  // Load a random word for practice when entering the tab
-  useEffect(() => {
-    if (activeTab === 'difficult') loadNextPracticeWord();
-  }, [activeTab, wordsList]);
-
-  const loadNextPracticeWord = () => {
-    const hardWords = wordsList.filter(w => w.mastery === 'red' || w.isDifficult);
-    if (hardWords.length > 0) {
-      const randomWord = hardWords[Math.floor(Math.random() * hardWords.length)];
-      setPracticeWord(randomWord);
-      setPracticeInput('');
-      setShowHint(false);
-    } else {
-      setPracticeWord(null);
-    }
-  };
-
-  const checkPracticeWord = async () => {
-    if (!practiceWord || !practiceInput.trim()) return;
-    if (practiceInput.toLowerCase().trim() === practiceWord.text.toLowerCase()) {
-      await handleSwipeAction(practiceWord.id, 'green'); // Mark as known
-      loadNextPracticeWord(); // Next word
-    } else {
-      setShowHint(true);
-      setPracticeInput('');
-    }
-  };
-
   const speak = (text: string) => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      
-      // Attempt to find a softer/female voice
       const voices = window.speechSynthesis.getVoices();
       const softVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('UK'))) || voices.find(v => v.lang === 'en-US');
-      
       if (softVoice) utterance.voice = softVoice;
       utterance.rate = 0.85;
       window.speechSynthesis.speak(utterance);
@@ -137,7 +105,8 @@ export default function StepByStepApp() {
         8. "synonyms": array of 2-3 synonyms
         9. "relatedNoun": if the word is a verb/adj, provide its noun form. If it IS a noun, return null.
         10. "relatedVerb": if the word is a noun/adj, provide its verb form. If it IS a verb, return null.
-        11. "example": A practical sentence using the word.
+        11. "pastTense": if the word is a verb, provide its past tense. Otherwise return null.
+        12. "example": A practical sentence using the word.
         `;
       
       const rawText = await fetchFromAPI(prompt);
@@ -197,7 +166,6 @@ export default function StepByStepApp() {
       The user wants to talk freely about anything. 
       CRITICAL RULE: You MUST actively monitor their English. If they make ANY grammar, vocabulary, or phrasing mistake in their message, you must politely point it out, explain why, and show the correct natural way to say it, BEFORE continuing the conversation.
       If their English is perfect, compliment them and continue the chat naturally.
-      Keep the conversation flowing, engaging, and highly educational.
       \nHistory:\n${history}\nUSER: ${userMsg}\nCOACH:`;
       
       const responseText = await fetchFromAPI(prompt);
@@ -240,7 +208,17 @@ export default function StepByStepApp() {
   }, [wordsList, isMounted]);
 
   const recentDates = Object.keys(groupedHistory.recent).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  const olderWeeks = Object.keys(groupedHistory.older).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
+  
+  // Practice Tab Logic
+  const redWords = wordsList.filter(w => w.mastery === 'red' || w.isDifficult);
+  const currentPracticeWord = redWords[activeCardIndex] || redWords[0];
+
+  useEffect(() => { setIsCardFlipped(false); }, [activeCardIndex, currentPracticeWord?.id]);
+  useEffect(() => {
+    if (activeCardIndex >= redWords.length && redWords.length > 0) {
+      setActiveCardIndex(Math.max(0, redWords.length - 1));
+    }
+  }, [redWords.length, activeCardIndex]);
 
   const renderHighlightedDiff = (word1: string, word2: string) => {
     return word1.split('').map((char, index) => {
@@ -291,21 +269,19 @@ export default function StepByStepApp() {
                   </div>
                 )}
                 
-                {/* CENTERED WORD AND PHONETICS */}
+                {/* CENTERED WORD AND WIDE PHONETICS */}
                 <div className="flex flex-col items-center justify-center text-center mb-8">
-                  <h2 className="text-[44px] font-serif font-black capitalize text-[#3E322C] leading-none mb-3">{wordsList[0].text}</h2>
+                  <h2 className="text-[44px] font-serif font-black capitalize text-[#3E322C] leading-none mb-4">{wordsList[0].text}</h2>
                   
-                  <div className="flex items-center gap-3 bg-[#FDFBF7] px-5 py-2.5 rounded-full border border-[#EAE1D8] shadow-sm">
-                    <button onClick={() => speak(wordsList[0].text)} className="text-[#D97757] active:scale-90 transition-all">
-                      <Volume2 size={20} />
-                    </button>
-                    <div className="text-[17px] font-light text-[#A69B95] tracking-wide flex gap-1">
+                  <div className="flex items-center gap-4 bg-[#FDFBF7] px-6 py-3 rounded-full border border-[#EAE1D8] shadow-sm cursor-pointer active:scale-95 transition-all" onClick={() => speak(wordsList[0].text)}>
+                    <Volume2 size={22} className="text-[#D97757]" />
+                    <div className="text-[17px] font-light text-[#A69B95] tracking-[0.2em] flex gap-2">
                       {wordsList[0].soundsLike?.split('-').map((p:any, i:any) => <span key={i} className={p === p.toUpperCase() ? "font-bold text-[#3E322C]" : ""}>{p.toLowerCase()}</span>)}
                     </div>
                   </div>
                 </div>
                 
-                {/* TRANSLATION & DEFINITION */}
+                {/* DICTIONARY (Restored) */}
                 <div className="mb-6 pb-6 border-b border-[#F3EFE9] text-center">
                   <p className="text-[24px] font-bold text-[#7BA05B] mb-3">{wordsList[0].translation}</p>
                   {wordsList[0].partOfSpeech && (
@@ -316,28 +292,34 @@ export default function StepByStepApp() {
                   </p>
                 </div>
 
-                {/* WORD FAMILY & SYNONYMS */}
-                <div className="mb-6 space-y-2">
-                  {wordsList[0].synonyms && wordsList[0].synonyms.length > 0 && (
+                {/* REORDERED WORD FAMILY & SYNONYMS */}
+                <div className="mb-6 space-y-3">
+                  {wordsList[0].relatedVerb && (
                      <div className="flex items-baseline gap-2">
+                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0">פועל:</span>
+                       <span className="text-[15px] font-bold text-[#3E322C]">{wordsList[0].relatedVerb}</span>
+                     </div>
+                  )}
+                  {wordsList[0].relatedNoun && (
+                     <div className="flex items-baseline gap-2">
+                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0">שם עצם:</span>
+                       <span className="text-[15px] font-bold text-[#3E322C]">{wordsList[0].relatedNoun}</span>
+                     </div>
+                  )}
+                  {wordsList[0].pastTense && (
+                     <div className="flex items-baseline gap-2">
+                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0">צורת עבר:</span>
+                       <span className="text-[15px] font-bold text-[#3E322C]">{wordsList[0].pastTense}</span>
+                     </div>
+                  )}
+                  {wordsList[0].synonyms && wordsList[0].synonyms.length > 0 && (
+                     <div className="flex items-baseline gap-2 pt-1">
                        <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0">מילים נרדפות:</span>
                        <div className="flex flex-wrap gap-1.5">
                          {wordsList[0].synonyms.map((s: string, idx: number) => (
                            <span key={idx} className="text-[13px] font-medium text-[#3E322C] bg-[#FDFBF7] px-2 py-0.5 rounded-md border border-[#EAE1D8]">{s}</span>
                          ))}
                        </div>
-                     </div>
-                  )}
-                  {wordsList[0].relatedNoun && (
-                     <div className="flex items-baseline gap-2">
-                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0">שם עצם:</span>
-                       <span className="text-[14px] font-bold text-[#3E322C]">{wordsList[0].relatedNoun}</span>
-                     </div>
-                  )}
-                  {wordsList[0].relatedVerb && (
-                     <div className="flex items-baseline gap-2">
-                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0">פועל:</span>
-                       <span className="text-[14px] font-bold text-[#3E322C]">{wordsList[0].relatedVerb}</span>
                      </div>
                   )}
                 </div>
@@ -348,44 +330,6 @@ export default function StepByStepApp() {
                 </div>
               </div>
             ) : null}
-
-            {wordsList[0] && (
-              <button onClick={() => { setCompareResult(null); setCompareInput(''); setIsCompareOpen(true); }} className="fixed bottom-[100px] right-6 p-4 bg-[#D97757] text-white rounded-full shadow-xl shadow-[#D97757]/30 active:scale-90 transition-all z-40">
-                <Lightbulb size={24} fill="currentColor" />
-              </button>
-            )}
-
-            {isCompareOpen && (
-              <div className="fixed inset-0 bg-[#3E322C]/40 backdrop-blur-sm z-50 flex items-center justify-center p-5 animate-in fade-in">
-                <div className="bg-[#FDFBF7] w-full max-w-sm rounded-[2rem] p-8 shadow-2xl relative border border-[#EAE1D8]">
-                  <button onClick={() => setIsCompareOpen(false)} className="absolute top-6 right-6 text-[#A69B95]"><X size={20} /></button>
-                  <h3 className="text-xl font-serif font-black text-[#3E322C] mb-2">Wait, I thought it was...</h3>
-                  <p className="text-xs text-[#7A6D65] mb-6">Type the word you confused it with (Hebrew or English).</p>
-                  
-                  <div className="flex gap-2 mb-6">
-                    <input type="text" value={compareInput} onChange={(e) => setCompareInput(e.target.value)} placeholder="e.g. affect" className="flex-1 p-3 px-4 bg-white rounded-xl border border-[#EAE1D8] focus:border-[#D97757] outline-none font-bold" />
-                    <button onClick={handleCompareWords} disabled={isComparing || !compareInput} className="bg-[#D97757] text-white px-5 rounded-xl font-bold">
-                      {isComparing ? <Loader2 size={18} className="animate-spin" /> : "Check"}
-                    </button>
-                  </div>
-
-                  {compareResult && (
-                    <div className="space-y-3 animate-in slide-in-from-bottom-2">
-                      <div className="bg-white p-4 rounded-2xl border border-[#EAE1D8]">
-                        <p className="text-[10px] font-bold text-[#7BA05B] uppercase mb-1">Original Word</p>
-                        <p className="text-2xl font-black text-[#3E322C] font-serif">{renderHighlightedDiff(wordsList[0].text, compareResult.text)}</p>
-                        <p className="text-[11px] font-bold text-[#A69B95] mt-1">{wordsList[0].translation}</p>
-                      </div>
-                      <div className="bg-[#FCF8F2] p-4 rounded-2xl border border-[#F2DCC9]">
-                        <p className="text-[10px] font-bold text-[#D97757] uppercase mb-1">Your Confusion</p>
-                        <p className="text-2xl font-black text-[#3E322C] font-serif">{renderHighlightedDiff(compareResult.text, wordsList[0].text)}</p>
-                        <p className="text-[11px] font-bold text-[#A69B95] mt-1">{compareResult.translation}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -423,54 +367,68 @@ export default function StepByStepApp() {
           </div>
         )}
 
-        {/* --- ACTIVE PRACTICE TAB --- */}
+        {/* --- PRACTICE TAB (Split Screen) --- */}
         {activeTab === 'difficult' && (
-          <div className="animate-in fade-in duration-500 mt-2 h-full flex flex-col">
-            <div className="bg-[#FDF6ED] p-6 rounded-3xl mb-8 shadow-sm border border-[#F2DCC9] flex items-center gap-4">
-               <div className="p-3 bg-white rounded-2xl shadow-sm text-[#D97757]"><Keyboard size={24} /></div>
-               <div>
-                 <h2 className="text-xl font-black text-[#3E322C] font-serif">Active Recall</h2>
-                 <p className="text-xs text-[#D97757] font-bold mt-1 uppercase tracking-widest">Type the English word</p>
-               </div>
-            </div>
+          <div className="animate-in fade-in duration-500 h-[calc(100vh-140px)] flex flex-col pt-2 pb-6">
             
-            {practiceWord ? (
-              <div className="flex-1 flex flex-col justify-center items-center pb-20 animate-in slide-in-from-bottom-4">
-                 <p className="text-[13px] font-bold text-[#A69B95] uppercase tracking-widest mb-4">Translate this:</p>
-                 <h3 className="text-[32px] font-black text-[#7BA05B] mb-10 text-center">{practiceWord.translation}</h3>
-                 
-                 <div className="w-full relative max-w-xs">
-                    <input 
-                      type="text" 
-                      value={practiceInput}
-                      onChange={(e) => setPracticeInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && checkPracticeWord()}
-                      placeholder="Type here..."
-                      className={`w-full text-center p-4 text-2xl font-serif font-black bg-white rounded-2xl border-2 shadow-sm outline-none transition-colors ${showHint ? 'border-[#D97757] text-[#D97757]' : 'border-[#EAE1D8] focus:border-[#3E322C]'}`}
-                    />
-                 </div>
-
-                 {showHint && (
-                   <div className="mt-6 flex flex-col items-center animate-in fade-in">
-                     <p className="text-[14px] text-[#A69B95] font-bold flex gap-2 items-center"><HelpCircle size={16}/> Hint:</p>
-                     <p className="text-[20px] font-bold text-[#3E322C] tracking-widest mt-2">{practiceWord.text.charAt(0).toUpperCase()} _ _ _ _</p>
-                     <div className="text-[14px] font-light text-[#A69B95] flex gap-1 mt-2">
-                      {practiceWord.soundsLike?.split('-').map((p:any, i:any) => <span key={i} className={p === p.toUpperCase() ? "font-bold" : ""}>{p.toLowerCase()}</span>)}
+            {/* Top Half: The Red List */}
+            <div className="flex-1 bg-white rounded-3xl border border-[#EAE1D8] overflow-hidden flex flex-col mb-4 shadow-sm">
+              <div className="p-4 bg-[#FCF8F2] border-b border-[#EAE1D8] flex items-center justify-between">
+                <h3 className="font-bold text-[#D97757] text-sm uppercase tracking-wider flex items-center gap-2">
+                  <Layers size={16}/> Words to Master ({redWords.length})
+                </h3>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2 no-scrollbar space-y-1">
+                {redWords.length === 0 ? (
+                   <p className="text-center text-sm text-[#A69B95] mt-10">No difficult words right now. Great job!</p>
+                ) : (
+                  redWords.map((w, idx) => (
+                    <div key={w.id} onClick={() => setActiveCardIndex(idx)} className={`p-3 rounded-xl flex justify-between items-center transition-colors cursor-pointer ${idx === activeCardIndex ? 'bg-[#FDF6ED] border border-[#F2DCC9]' : 'hover:bg-[#FDFBF7]'}`}>
+                      <span className={`font-bold capitalize ${idx === activeCardIndex ? 'text-[#3E322C]' : 'text-[#7A6D65]'}`}>{w.text}</span>
+                      <span className="text-xs font-medium text-[#A69B95]">{w.translation}</span>
                     </div>
-                   </div>
-                 )}
+                  ))
+                )}
+              </div>
+            </div>
 
-                 <button onClick={checkPracticeWord} className="mt-8 w-full max-w-xs bg-[#3E322C] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all">
-                   Check Answer
-                 </button>
-              </div>
-            ) : (
-              <div className="text-center py-20 opacity-50 flex flex-col items-center">
-                 <CheckCircle2 size={48} className="text-[#7BA05B] mb-4" />
-                 <h3 className="text-xl font-bold text-[#3E322C]">All caught up!</h3>
-                 <p className="text-sm text-[#A69B95]">No difficult words to practice right now.</p>
-              </div>
-            )}
+            {/* Bottom Half: Flashcard Mechanism */}
+            <div className="h-[260px] w-full relative perspective-1000 shrink-0">
+               {currentPracticeWord ? (
+                 <div 
+                   className={`w-full h-full relative transition-transform duration-500 transform-style-3d cursor-pointer ${isCardFlipped ? 'rotate-y-180' : ''}`}
+                 >
+                   {/* Front of Card (Hebrew) */}
+                   <div className="absolute inset-0 bg-[#3E322C] rounded-[2rem] shadow-xl p-6 flex flex-col items-center justify-center backface-hidden" onClick={() => setIsCardFlipped(true)}>
+                     <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-4">Tap to reveal</p>
+                     <h2 className="text-4xl font-black text-white text-center">{currentPracticeWord.translation}</h2>
+                   </div>
+
+                   {/* Back of Card (English) */}
+                   <div className="absolute inset-0 bg-white border-2 border-[#D97757] rounded-[2rem] shadow-xl p-6 flex flex-col justify-between backface-hidden rotate-y-180">
+                     <div className="text-center mt-4">
+                       <h2 className="text-3xl font-black font-serif text-[#3E322C] capitalize mb-1">{currentPracticeWord.text}</h2>
+                       <p className="text-sm text-[#A69B95] tracking-widest mb-4">{currentPracticeWord.soundsLike?.toLowerCase()}</p>
+                     </div>
+                     
+                     <div className="flex gap-3 w-full">
+                       <button onClick={() => { setIsCardFlipped(false); setActiveCardIndex(prev => (prev + 1) % redWords.length); }} className="flex-1 py-3 rounded-xl bg-[#FDF6ED] text-[#D97757] font-bold active:scale-95 transition-all text-sm">
+                         Still Hard
+                       </button>
+                       <button onClick={async () => { await handleSwipeAction(currentPracticeWord.id, 'green'); }} className="flex-1 py-3 rounded-xl bg-[#7BA05B] text-white font-bold active:scale-95 transition-all shadow-md text-sm">
+                         Got it!
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               ) : (
+                 <div className="w-full h-full bg-white border border-[#EAE1D8] rounded-[2rem] flex flex-col items-center justify-center text-[#A69B95]">
+                   <CheckCircle2 size={40} className="mb-2 text-[#EAE1D8]"/>
+                   <p className="font-bold">You're all caught up!</p>
+                 </div>
+               )}
+            </div>
+
           </div>
         )}
 
