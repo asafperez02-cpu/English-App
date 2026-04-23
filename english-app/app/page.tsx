@@ -231,7 +231,7 @@ export default function StepByStepApp() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] font-sans text-[#3E322C] antialiased pb-24" dir="ltr">
-      <header className="pt-10 pb-4 px-6 flex justify-between items-center">
+      <header className="pt-10 pb-4 px-6 flex justify-center items-center">
         <h1 className="text-[28px] font-black tracking-tighter text-[#3E322C]">
           Fluency<span className="text-[#D97757]">.</span>
         </h1>
@@ -281,7 +281,7 @@ export default function StepByStepApp() {
                   </div>
                 </div>
                 
-                {/* DICTIONARY (Restored) */}
+                {/* DICTIONARY */}
                 <div className="mb-6 pb-6 border-b border-[#F3EFE9] text-center">
                   <p className="text-[24px] font-bold text-[#7BA05B] mb-3">{wordsList[0].translation}</p>
                   {wordsList[0].partOfSpeech && (
@@ -292,29 +292,29 @@ export default function StepByStepApp() {
                   </p>
                 </div>
 
-                {/* REORDERED WORD FAMILY & SYNONYMS */}
+                {/* WORD FAMILY & SYNONYMS (English Labels) */}
                 <div className="mb-6 space-y-3">
                   {wordsList[0].relatedVerb && (
                      <div className="flex items-baseline gap-2">
-                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0">פועל:</span>
+                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0 text-left">Verb:</span>
                        <span className="text-[15px] font-bold text-[#3E322C]">{wordsList[0].relatedVerb}</span>
                      </div>
                   )}
                   {wordsList[0].relatedNoun && (
                      <div className="flex items-baseline gap-2">
-                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0">שם עצם:</span>
+                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0 text-left">Noun:</span>
                        <span className="text-[15px] font-bold text-[#3E322C]">{wordsList[0].relatedNoun}</span>
                      </div>
                   )}
                   {wordsList[0].pastTense && (
                      <div className="flex items-baseline gap-2">
-                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0">צורת עבר:</span>
+                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0 text-left">Past Tense:</span>
                        <span className="text-[15px] font-bold text-[#3E322C]">{wordsList[0].pastTense}</span>
                      </div>
                   )}
                   {wordsList[0].synonyms && wordsList[0].synonyms.length > 0 && (
                      <div className="flex items-baseline gap-2 pt-1">
-                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0">מילים נרדפות:</span>
+                       <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0 text-left">Synonyms:</span>
                        <div className="flex flex-wrap gap-1.5">
                          {wordsList[0].synonyms.map((s: string, idx: number) => (
                            <span key={idx} className="text-[13px] font-medium text-[#3E322C] bg-[#FDFBF7] px-2 py-0.5 rounded-md border border-[#EAE1D8]">{s}</span>
@@ -367,7 +367,7 @@ export default function StepByStepApp() {
           </div>
         )}
 
-        {/* --- PRACTICE TAB (Split Screen) --- */}
+        {/* --- PRACTICE TAB (Split Screen with Fixed 3D Flip) --- */}
         {activeTab === 'difficult' && (
           <div className="animate-in fade-in duration-500 h-[calc(100vh-140px)] flex flex-col pt-2 pb-6">
             
@@ -393,19 +393,20 @@ export default function StepByStepApp() {
             </div>
 
             {/* Bottom Half: Flashcard Mechanism */}
-            <div className="h-[260px] w-full relative perspective-1000 shrink-0">
+            <div className="h-[260px] w-full relative shrink-0 [perspective:1000px]">
                {currentPracticeWord ? (
                  <div 
-                   className={`w-full h-full relative transition-transform duration-500 transform-style-3d cursor-pointer ${isCardFlipped ? 'rotate-y-180' : ''}`}
+                   className="w-full h-full relative transition-all duration-500 [transform-style:preserve-3d] cursor-pointer"
+                   style={{ transform: isCardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
                  >
                    {/* Front of Card (Hebrew) */}
-                   <div className="absolute inset-0 bg-[#3E322C] rounded-[2rem] shadow-xl p-6 flex flex-col items-center justify-center backface-hidden" onClick={() => setIsCardFlipped(true)}>
+                   <div className="absolute inset-0 bg-[#3E322C] rounded-[2rem] shadow-xl p-6 flex flex-col items-center justify-center [backface-visibility:hidden]" onClick={() => setIsCardFlipped(true)}>
                      <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-4">Tap to reveal</p>
                      <h2 className="text-4xl font-black text-white text-center">{currentPracticeWord.translation}</h2>
                    </div>
 
                    {/* Back of Card (English) */}
-                   <div className="absolute inset-0 bg-white border-2 border-[#D97757] rounded-[2rem] shadow-xl p-6 flex flex-col justify-between backface-hidden rotate-y-180">
+                   <div className="absolute inset-0 bg-white border-2 border-[#D97757] rounded-[2rem] shadow-xl p-6 flex flex-col justify-between [backface-visibility:hidden]" style={{ transform: 'rotateY(180deg)' }}>
                      <div className="text-center mt-4">
                        <h2 className="text-3xl font-black font-serif text-[#3E322C] capitalize mb-1">{currentPracticeWord.text}</h2>
                        <p className="text-sm text-[#A69B95] tracking-widest mb-4">{currentPracticeWord.soundsLike?.toLowerCase()}</p>
