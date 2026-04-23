@@ -7,10 +7,6 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Fluency.",
   description: "Your personal English language coach",
-  // הגדרות האייקונים החדשים שהעלית
-  icons: {
-    icon: "/icon.png",
-    apple: "/apple-icon.png",
   },
   // הגדרות למראה אפליקטיבי (PWA)
   appleWebApp: {
