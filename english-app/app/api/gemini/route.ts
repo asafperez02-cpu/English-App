@@ -11,12 +11,12 @@ export async function POST(req: Request) {
 
     const isJsonRequest = body.prompt.includes("strictly valid JSON");
     
-    // שדרוג הפרומפט אם זה חיפוש מילה (ולא צ'אט)
+    // שדרוג הפרומפט: כפיית עברית מדוברת ויומיומית על פני עברית מילונית עתיקה
     let finalPrompt = body.prompt;
     if (isJsonRequest) {
       finalPrompt = body.prompt.replace(
         '"translation": precise Hebrew translation',
-        '"translation": "Provide the most accurate, context-aware Hebrew dictionary translation. If the word has multiple common but distinctly different meanings (e.g., bark = נביחה / קליפת עץ), provide the top 2 meanings separated by a slash (/). Act as an expert lexicographer."'
+        '"translation": "Provide the most common, everyday conversational Hebrew translation first. Avoid overly formal or archaic words (e.g., explicitly translate \'anniversary\' as \'יום השנה / יום נישואים\' and NEVER \'יובל\'). If there are two very common distinct meanings, provide both separated by a slash (/)."'
       );
     }
 
@@ -27,12 +27,11 @@ export async function POST(req: Request) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        // 🚀 המעבר למנוע הדגל - החכם והמדויק ביותר של OpenAI
         model: "gpt-4o", 
         messages: [{ role: "user", content: finalPrompt }],
         response_format: isJsonRequest ? { type: "json_object" } : { type: "text" },
-        // הורדת הטמפרטורה ל-0.2 הופכת אותו לפחות "יצירתי" ויותר מדויק ועובדתי
-        temperature: 0.2 
+        // הורדתי את הטמפרטורה עוד יותר ל-0.1 כדי שיהיה מדויק כמו סכין מנתחים
+        temperature: 0.1 
       })
     });
 
