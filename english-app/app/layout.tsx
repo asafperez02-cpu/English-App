@@ -7,8 +7,6 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Fluency.",
   description: "Your personal English language coach",
-  },
-  // הגדרות למראה אפליקטיבי (PWA)
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -34,10 +32,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link rel="icon" href="/icon.png" />
-        <link rel="apple-touch-icon" href="/apple-icon.png" />
-      </head>
       <body className={inter.className}>
         {children}
       </body>
