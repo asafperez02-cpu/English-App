@@ -100,6 +100,7 @@ export default function StepByStepApp() {
     
     setLoading(true);
     try {
+      // PROMPT UPGRADE: Extreme strictness on grammarNote
       const prompt = `
         The user searched for the English word: "${searchWord}". 
         Provide strictly valid JSON with no markdown and no extra text.
@@ -115,7 +116,7 @@ export default function StepByStepApp() {
         10. "relatedVerb": if the word is a noun/adj, provide its verb form. If it IS a verb, return null.
         11. "pastTense": if the word is a verb, provide its past tense. Otherwise return null.
         12. "example": A practical sentence using the word.
-        13. "grammarNote": A smart, advanced, and non-obvious grammar/usage tip in Hebrew. Do NOT state basic rules (like "use ING after this verb"). If there is no highly valuable, advanced, or tricky tip, return null.
+        13. "grammarNote": Strictly return null for 90% of words. Only provide a Hebrew string if the word has a highly irregular rule, a dangerous false-friend for Israelis, or a very tricky advanced nuance. NEVER output basic rules like adding 'ing' or 's'. If in doubt, return null.
         `;
       
       const rawText = await fetchFromAPI(prompt);
@@ -148,7 +149,6 @@ export default function StepByStepApp() {
     setLoading(false);
   };
 
-  // Fetch Word Insight (Now fully in English)
   const fetchWordInsight = async (wordToExplain: string) => {
     if (activeInsightWord === wordToExplain) {
       setActiveInsightWord(null); 
@@ -243,7 +243,6 @@ export default function StepByStepApp() {
 
   const recentDates = Object.keys(groupedHistory.recent).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   
-  // Practice Tab Logic (Restored Split Screen)
   const redWords = wordsList.filter(w => w.mastery === 'red' || w.isDifficult);
   const currentPracticeWord = redWords[activeCardIndex] || redWords[0];
 
@@ -255,12 +254,11 @@ export default function StepByStepApp() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] font-sans text-[#3E322C] antialiased pb-24" dir="ltr">
       
-      {/* HEADER */}
+      {/* BULLETPROOF HEADER LOGO (CSS Based) */}
       <header className="pt-10 pb-4 px-6 flex justify-center items-center">
-         <img src="/logo.png" alt="Fluency Logo" className="h-10 object-contain" onError={(e) => { e.currentTarget.style.display='none'; document.getElementById('fallback-logo')!.style.display='block'; }} />
-         <h1 id="fallback-logo" className="text-[28px] font-black tracking-tighter text-[#3E322C]" style={{display: 'none'}}>
+         <div className="bg-[#1a2433] text-white font-black text-[22px] px-5 py-2.5 rounded-2xl tracking-wide shadow-md flex items-center justify-center select-none cursor-default">
            Fluency<span className="text-[#D97757]">.</span>
-         </h1>
+         </div>
       </header>
 
       <div className="max-w-md mx-auto px-5">
@@ -301,7 +299,6 @@ export default function StepByStepApp() {
                   </div>
                 </div>
                 
-                {/* DICTIONARY */}
                 <div className="mb-6 pb-6 border-b border-[#F3EFE9] text-center">
                   <p className="text-[24px] font-bold text-[#7BA05B] mb-3">{wordsList[0].translation}</p>
                   {wordsList[0].partOfSpeech && (
@@ -310,7 +307,6 @@ export default function StepByStepApp() {
                   <p className="text-[16px] text-[#3E322C] leading-snug">{wordsList[0].definition}</p>
                 </div>
 
-                {/* WORD FAMILY & SYNONYMS (Clickable for Insights - ENGLISH) */}
                 <div className="mb-6 space-y-3">
                   {[
                     { label: "Verb", value: wordsList[0].relatedVerb },
@@ -322,7 +318,6 @@ export default function StepByStepApp() {
                          <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0 text-left">{item.label}:</span>
                          <span className="text-[15px] font-bold text-[#3E322C] cursor-pointer hover:text-[#D97757] border-b border-dashed border-transparent hover:border-[#D97757] transition-all" onClick={() => fetchWordInsight(item.value)}>{item.value}</span>
                       </div>
-                      {/* Insight Expansion */}
                       {activeInsightWord === item.value && (
                         <div className="mt-2 p-4 bg-[#FDFBF7] border border-[#EAE1D8] rounded-xl text-left" dir="ltr">
                            {insightLoading ? <Loader2 size={16} className="animate-spin text-[#D97757] mx-auto" /> : insightData && (
@@ -336,7 +331,6 @@ export default function StepByStepApp() {
                     </div>
                   ))}
 
-                  {/* Synonyms */}
                   {wordsList[0].synonyms && wordsList[0].synonyms.length > 0 && (
                      <div className="flex items-baseline gap-2 pt-1">
                        <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0 text-left">Synonyms:</span>
@@ -351,7 +345,6 @@ export default function StepByStepApp() {
                        </div>
                      </div>
                   )}
-                  {/* Synonyms Insight Expansion */}
                   {wordsList[0].synonyms?.includes(activeInsightWord) && (
                       <div className="mt-2 p-4 bg-[#FCF8F2] border border-[#F2DCC9] rounded-xl text-left animate-in fade-in" dir="ltr">
                          {insightLoading ? <Loader2 size={16} className="animate-spin text-[#D97757] mx-auto" /> : insightData && (
@@ -365,16 +358,14 @@ export default function StepByStepApp() {
                   )}
                 </div>
 
-                {/* EXAMPLE & GRAMMAR NOTE */}
                 <div className="space-y-3">
                   <div className="bg-[#FCF8F2] p-5 rounded-2xl border border-[#F2DCC9]">
                     <p className="text-[16px] leading-relaxed text-[#DDA77B] font-medium italic">"{wordsList[0].example}"</p>
                   </div>
                   
-                  {/* Smart Grammar Note */}
                   {wordsList[0].grammarNote && (
                     <div className="bg-[#F1F4EE] p-4 rounded-xl border border-[#DCE4D7] text-right" dir="rtl">
-                      <p className="text-[11px] font-bold text-[#7BA05B] uppercase tracking-wider mb-1 flex items-center gap-1.5"><Sparkles size={14}/> כלל דקדוקי</p>
+                      <p className="text-[11px] font-bold text-[#7BA05B] uppercase tracking-wider mb-1 flex items-center gap-1.5"><Sparkles size={14}/> ניואנס שחשוב להכיר</p>
                       <p className="text-[14px] text-[#3E322C] font-medium leading-snug">{wordsList[0].grammarNote}</p>
                     </div>
                   )}
@@ -404,11 +395,9 @@ export default function StepByStepApp() {
           </div>
         )}
 
-        {/* --- PRACTICE TAB (Restored Split Screen) --- */}
+        {/* --- PRACTICE TAB --- */}
         {activeTab === 'difficult' && (
           <div className="animate-in fade-in duration-500 h-[calc(100vh-140px)] flex flex-col pt-2 pb-6">
-            
-            {/* Top Half: Red List */}
             <div className="flex-1 bg-white rounded-3xl border border-[#EAE1D8] overflow-hidden flex flex-col mb-4 shadow-sm">
               <div className="p-4 bg-[#FCF8F2] border-b border-[#EAE1D8] flex items-center justify-between">
                 <h3 className="font-bold text-[#D97757] text-sm uppercase tracking-wider flex items-center gap-2">
@@ -429,17 +418,13 @@ export default function StepByStepApp() {
               </div>
             </div>
 
-            {/* Bottom Half: Flashcard Mechanism (Fade animation) */}
             <div className="h-[260px] w-full relative shrink-0">
                {currentPracticeWord ? (
                  <div className="w-full h-full relative cursor-pointer" onClick={() => !isCardFlipped && setIsCardFlipped(true)}>
-                   {/* Front of Card */}
                    <div className={`absolute inset-0 bg-[#3E322C] rounded-[2rem] shadow-xl p-6 flex flex-col items-center justify-center transition-all duration-300 ${isCardFlipped ? 'opacity-0 scale-95 z-0 pointer-events-none' : 'opacity-100 scale-100 z-10'}`}>
                      <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-4">Tap to reveal</p>
                      <h2 className="text-4xl font-black text-white text-center">{currentPracticeWord.translation}</h2>
                    </div>
-
-                   {/* Back of Card */}
                    <div className={`absolute inset-0 bg-white border-2 border-[#D97757] rounded-[2rem] shadow-xl p-6 flex flex-col justify-between transition-all duration-300 ${isCardFlipped ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-95 z-0 pointer-events-none'}`}>
                      <div className="text-center mt-4">
                        <h2 className="text-3xl font-black font-serif text-[#3E322C] capitalize mb-1">{currentPracticeWord.text}</h2>
@@ -461,7 +446,7 @@ export default function StepByStepApp() {
           </div>
         )}
 
-        {/* --- CHAT TAB (Restored Full Tab) --- */}
+        {/* --- CHAT TAB --- */}
         {activeTab === 'chat' && (
           <div className="flex flex-col animate-in fade-in" style={{ height: 'calc(100vh - 180px)' }}>
             <div className="flex justify-between items-center mb-3 px-2 bg-white/50 py-2 rounded-xl backdrop-blur-sm border border-[#EAE1D8]">
@@ -567,7 +552,7 @@ export default function StepByStepApp() {
         </div>
       )}
 
-      {/* BOTTOM NAV (Restored 4 Tabs) */}
+      {/* BOTTOM NAV */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-[#EAE1D8] px-6 py-4 flex justify-between items-end z-30 shadow-[0_-10px_40px_rgba(62,50,44,0.03)] pb-6">
         <NavBtn active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Search size={22} />} label="Search" />
         <NavBtn active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<Clock size={22} />} label="History" />
