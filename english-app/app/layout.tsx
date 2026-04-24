@@ -15,6 +15,11 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  icons: {
+    icon: "/logo.png",
+    // ה-v=2 בסוף שובר את הזיכרון של האייפון ומכריח אותו למשוך את התמונה
+    apple: "/logo.png?v=2", 
+  },
 };
 
 export const viewport: Viewport = {
