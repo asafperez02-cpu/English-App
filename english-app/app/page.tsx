@@ -5,34 +5,35 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { 
   Search, Volume2, MessageSquare, Clock, Send, Loader2, 
-  Lightbulb, X, RefreshCw, BookmarkPlus, CheckCircle2, AlertCircle, Trash2, ChevronRight, Layers,
-  HelpCircle, ArrowRight, PenTool, Sparkles
+  X, CheckCircle2, AlertCircle, Trash2, ChevronRight, Layers,
+  HelpCircle, PenTool, Sparkles
 } from 'lucide-react';
 
 export default function StepByStepApp() {
   const [isMounted, setIsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('home'); // home, history, difficult, chat
   const [word, setWord] = useState('');
   const [wordsList, setWordsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   
   const [selectedDate, setSelectedDate] = useState<string>('');
   
+  // Chat Tab State
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<{role: string, text: string}[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Practice Tab State
+  // Practice Tab State (Split Screen)
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
 
-  // --- NEW: Journal State ---
+  // Floating Journal State
   const [isJournalOpen, setIsJournalOpen] = useState(false);
   const [journalInput, setJournalInput] = useState('');
   const [journalChat, setJournalChat] = useState<{role: string, text: string, feedback?: any}[]>([]);
   const journalEndRef = useRef<HTMLDivElement>(null);
 
-  // --- NEW: Word Insights State ---
+  // Word Insights State
   const [insightLoading, setInsightLoading] = useState(false);
   const [activeInsightWord, setActiveInsightWord] = useState<string | null>(null);
   const [insightData, setInsightData] = useState<any>(null);
@@ -114,7 +115,7 @@ export default function StepByStepApp() {
         10. "relatedVerb": if the word is a noun/adj, provide its verb form. If it IS a verb, return null.
         11. "pastTense": if the word is a verb, provide its past tense. Otherwise return null.
         12. "example": A practical sentence using the word.
-        13. "grammarNote": A short, highly relevant grammar tip in Hebrew (e.g. 'שים לב: אחרי פועל זה נהוג להשתמש ב-ING'). If there is no crucial rule, return null. Keep it accurate and concise.
+        13. "grammarNote": A smart, advanced, and non-obvious grammar/usage tip in Hebrew. Do NOT state basic rules (like "use ING after this verb"). If there is no highly valuable, advanced, or tricky tip, return null.
         `;
       
       const rawText = await fetchFromAPI(prompt);
@@ -147,32 +148,30 @@ export default function StepByStepApp() {
     setLoading(false);
   };
 
-  // --- NEW: Fetch Insight for Synonyms/Related Words ---
+  // Fetch Word Insight (Now fully in English)
   const fetchWordInsight = async (wordToExplain: string) => {
     if (activeInsightWord === wordToExplain) {
-      setActiveInsightWord(null); // Toggle off
+      setActiveInsightWord(null); 
       return;
     }
     setActiveInsightWord(wordToExplain);
     setInsightData(null);
     setInsightLoading(true);
     try {
-      const prompt = `The user wants an insight on the English word: "${wordToExplain}". Provide strictly valid JSON explaining its usage. Format:
+      const prompt = `The user wants an insight on the English word: "${wordToExplain}". Provide strictly valid JSON explaining its nuance IN ENGLISH. Format:
       {
-        "usage": "Hebrew explanation of exactly WHEN to use it",
-        "formality": "Is it Formal, Informal, Slang, or Everyday? (in Hebrew)",
-        "context": "Short practical example of its context (in Hebrew)"
+        "usage": "Precise English explanation of exactly WHEN to use this word, highlighting its nuance compared to basic synonyms.",
+        "context": "A short, practical English sentence showing it in action."
       }`;
       const rawText = await fetchFromAPI(prompt);
       const cleanText = rawText.replace(/```(json)?/gi, "").replace(/```/g, "").trim();
       setInsightData(JSON.parse(cleanText));
     } catch (e) {
-      setInsightData({ usage: "שגיאה בטעינת המידע", formality: "-", context: "-" });
+      setInsightData({ usage: "Error loading insight.", context: "-" });
     }
     setInsightLoading(false);
   };
 
-  // --- NEW: Journal Send Action ---
   const handleJournalSend = async () => {
     if (!journalInput.trim()) return;
     const userText = journalInput.trim();
@@ -183,7 +182,7 @@ export default function StepByStepApp() {
       const prompt = `The user wrote a daily action in English to practice: "${userText}". Act as an expert English teacher. Provide strictly valid JSON feedback.
       {
         "isCorrect": boolean,
-        "explanation": "Clear, encouraging explanation in Hebrew of any mistakes (if perfect, explain why it's good)",
+        "explanation": "Clear, encouraging explanation in Hebrew of any mistakes (if perfect, explain briefly why it's good)",
         "correction": "The grammatically correct version (if needed, else null)",
         "naturalAlternative": "A more native/natural/common way to say it (if applicable)"
       }`;
@@ -243,6 +242,8 @@ export default function StepByStepApp() {
   }, [wordsList, isMounted]);
 
   const recentDates = Object.keys(groupedHistory.recent).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  
+  // Practice Tab Logic (Restored Split Screen)
   const redWords = wordsList.filter(w => w.mastery === 'red' || w.isDifficult);
   const currentPracticeWord = redWords[activeCardIndex] || redWords[0];
 
@@ -254,9 +255,8 @@ export default function StepByStepApp() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] font-sans text-[#3E322C] antialiased pb-24" dir="ltr">
       
-      {/* HEADER WITH LOGO FIX */}
+      {/* HEADER */}
       <header className="pt-10 pb-4 px-6 flex justify-center items-center">
-         {/* Using an img tag to load the logo from the public folder. Fallback to text if missing */}
          <img src="/logo.png" alt="Fluency Logo" className="h-10 object-contain" onError={(e) => { e.currentTarget.style.display='none'; document.getElementById('fallback-logo')!.style.display='block'; }} />
          <h1 id="fallback-logo" className="text-[28px] font-black tracking-tighter text-[#3E322C]" style={{display: 'none'}}>
            Fluency<span className="text-[#D97757]">.</span>
@@ -310,7 +310,7 @@ export default function StepByStepApp() {
                   <p className="text-[16px] text-[#3E322C] leading-snug">{wordsList[0].definition}</p>
                 </div>
 
-                {/* WORD FAMILY & SYNONYMS (Clickable for Insights) */}
+                {/* WORD FAMILY & SYNONYMS (Clickable for Insights - ENGLISH) */}
                 <div className="mb-6 space-y-3">
                   {[
                     { label: "Verb", value: wordsList[0].relatedVerb },
@@ -324,12 +324,11 @@ export default function StepByStepApp() {
                       </div>
                       {/* Insight Expansion */}
                       {activeInsightWord === item.value && (
-                        <div className="mt-2 p-4 bg-[#FDFBF7] border border-[#EAE1D8] rounded-xl text-right" dir="rtl">
+                        <div className="mt-2 p-4 bg-[#FDFBF7] border border-[#EAE1D8] rounded-xl text-left" dir="ltr">
                            {insightLoading ? <Loader2 size={16} className="animate-spin text-[#D97757] mx-auto" /> : insightData && (
                              <div className="text-sm space-y-2">
-                               <p><strong className="text-[#3E322C]">מתי נשתמש:</strong> <span className="text-[#7A6D65]">{insightData.usage}</span></p>
-                               <p><strong className="text-[#3E322C]">סגנון:</strong> <span className="text-[#7A6D65]">{insightData.formality}</span></p>
-                               <p><strong className="text-[#3E322C]">הקשר:</strong> <span className="text-[#7BA05B]">{insightData.context}</span></p>
+                               <p><strong className="text-[#3E322C]">Usage:</strong> <span className="text-[#7A6D65]">{insightData.usage}</span></p>
+                               <p><strong className="text-[#3E322C]">Example:</strong> <span className="text-[#7BA05B]">{insightData.context}</span></p>
                              </div>
                            )}
                         </div>
@@ -354,13 +353,12 @@ export default function StepByStepApp() {
                   )}
                   {/* Synonyms Insight Expansion */}
                   {wordsList[0].synonyms?.includes(activeInsightWord) && (
-                      <div className="mt-2 p-4 bg-[#FCF8F2] border border-[#F2DCC9] rounded-xl text-right animate-in fade-in" dir="rtl">
+                      <div className="mt-2 p-4 bg-[#FCF8F2] border border-[#F2DCC9] rounded-xl text-left animate-in fade-in" dir="ltr">
                          {insightLoading ? <Loader2 size={16} className="animate-spin text-[#D97757] mx-auto" /> : insightData && (
                            <div className="text-sm space-y-2">
-                             <p><strong className="text-[#DDA77B]">{activeInsightWord}</strong></p>
-                             <p><strong className="text-[#3E322C]">שימוש:</strong> <span className="text-[#7A6D65]">{insightData.usage}</span></p>
-                             <p><strong className="text-[#3E322C]">סגנון:</strong> <span className="text-[#7A6D65]">{insightData.formality}</span></p>
-                             <p><strong className="text-[#3E322C]">הקשר:</strong> <span className="text-[#7BA05B]">{insightData.context}</span></p>
+                             <p><strong className="text-[#DDA77B] text-base">{activeInsightWord}</strong></p>
+                             <p><strong className="text-[#3E322C]">Usage:</strong> <span className="text-[#7A6D65]">{insightData.usage}</span></p>
+                             <p><strong className="text-[#3E322C]">Example:</strong> <span className="text-[#7BA05B] italic">"{insightData.context}"</span></p>
                            </div>
                          )}
                       </div>
@@ -373,7 +371,7 @@ export default function StepByStepApp() {
                     <p className="text-[16px] leading-relaxed text-[#DDA77B] font-medium italic">"{wordsList[0].example}"</p>
                   </div>
                   
-                  {/* NEW: Smart Grammar Note */}
+                  {/* Smart Grammar Note */}
                   {wordsList[0].grammarNote && (
                     <div className="bg-[#F1F4EE] p-4 rounded-xl border border-[#DCE4D7] text-right" dir="rtl">
                       <p className="text-[11px] font-bold text-[#7BA05B] uppercase tracking-wider mb-1 flex items-center gap-1.5"><Sparkles size={14}/> כלל דקדוקי</p>
@@ -386,9 +384,6 @@ export default function StepByStepApp() {
           </div>
         )}
 
-        {/* --- OTHER TABS (History & Practice & Chat logic remains same) --- */}
-        {/* ... Omitting code for brevity if not changed, but supplying full file below for copy/paste ... */}
-        
         {/* --- HISTORY TAB --- */}
         {activeTab === 'history' && (
           <div className="animate-in fade-in duration-500 mt-2">
@@ -409,32 +404,90 @@ export default function StepByStepApp() {
           </div>
         )}
 
-        {/* --- PRACTICE TAB --- */}
+        {/* --- PRACTICE TAB (Restored Split Screen) --- */}
         {activeTab === 'difficult' && (
           <div className="animate-in fade-in duration-500 h-[calc(100vh-140px)] flex flex-col pt-2 pb-6">
+            
+            {/* Top Half: Red List */}
+            <div className="flex-1 bg-white rounded-3xl border border-[#EAE1D8] overflow-hidden flex flex-col mb-4 shadow-sm">
+              <div className="p-4 bg-[#FCF8F2] border-b border-[#EAE1D8] flex items-center justify-between">
+                <h3 className="font-bold text-[#D97757] text-sm uppercase tracking-wider flex items-center gap-2">
+                  <Layers size={16}/> Words to Master ({redWords.length})
+                </h3>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2 no-scrollbar space-y-1">
+                {redWords.length === 0 ? (
+                   <p className="text-center text-sm text-[#A69B95] mt-10">No difficult words right now. Great job!</p>
+                ) : (
+                  redWords.map((w, idx) => (
+                    <div key={w.id} onClick={() => setActiveCardIndex(idx)} className={`p-3 rounded-xl flex justify-between items-center transition-colors cursor-pointer ${idx === activeCardIndex ? 'bg-[#FDF6ED] border border-[#F2DCC9]' : 'hover:bg-[#FDFBF7]'}`}>
+                      <span className={`font-bold capitalize ${idx === activeCardIndex ? 'text-[#3E322C]' : 'text-[#7A6D65]'}`}>{w.text}</span>
+                      <span className="text-xs font-medium text-[#A69B95]">{w.translation}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Half: Flashcard Mechanism (Fade animation) */}
             <div className="h-[260px] w-full relative shrink-0">
                {currentPracticeWord ? (
                  <div className="w-full h-full relative cursor-pointer" onClick={() => !isCardFlipped && setIsCardFlipped(true)}>
-                   <div className={`absolute inset-0 bg-[#3E322C] rounded-[2rem] p-6 flex flex-col items-center justify-center transition-all ${isCardFlipped ? 'opacity-0 z-0 pointer-events-none' : 'opacity-100 z-10'}`}>
+                   {/* Front of Card */}
+                   <div className={`absolute inset-0 bg-[#3E322C] rounded-[2rem] shadow-xl p-6 flex flex-col items-center justify-center transition-all duration-300 ${isCardFlipped ? 'opacity-0 scale-95 z-0 pointer-events-none' : 'opacity-100 scale-100 z-10'}`}>
+                     <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-4">Tap to reveal</p>
                      <h2 className="text-4xl font-black text-white text-center">{currentPracticeWord.translation}</h2>
                    </div>
-                   <div className={`absolute inset-0 bg-white border-2 border-[#D97757] rounded-[2rem] p-6 flex flex-col justify-between transition-all ${isCardFlipped ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+
+                   {/* Back of Card */}
+                   <div className={`absolute inset-0 bg-white border-2 border-[#D97757] rounded-[2rem] shadow-xl p-6 flex flex-col justify-between transition-all duration-300 ${isCardFlipped ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-95 z-0 pointer-events-none'}`}>
                      <div className="text-center mt-4">
-                       <h2 className="text-3xl font-black text-[#3E322C] mb-1">{currentPracticeWord.text}</h2>
+                       <h2 className="text-3xl font-black font-serif text-[#3E322C] capitalize mb-1">{currentPracticeWord.text}</h2>
+                       <p className="text-sm text-[#A69B95] tracking-widest mb-4">{currentPracticeWord.soundsLike?.toLowerCase()}</p>
                      </div>
                      <div className="flex gap-3 w-full">
-                       <button onClick={(e) => { e.stopPropagation(); setIsCardFlipped(false); setActiveCardIndex(p => (p + 1) % redWords.length); }} className="flex-1 py-3 bg-[#FDF6ED] text-[#D97757] rounded-xl font-bold">Still Hard</button>
-                       <button onClick={async (e) => { e.stopPropagation(); await handleSwipeAction(currentPracticeWord.id, 'green'); }} className="flex-1 py-3 bg-[#7BA05B] text-white rounded-xl font-bold">Got it!</button>
+                       <button onClick={(e) => { e.stopPropagation(); setIsCardFlipped(false); setActiveCardIndex(p => (p + 1) % redWords.length); }} className="flex-1 py-3 rounded-xl bg-[#FDF6ED] text-[#D97757] font-bold active:scale-95 transition-all text-sm">Still Hard</button>
+                       <button onClick={async (e) => { e.stopPropagation(); await handleSwipeAction(currentPracticeWord.id, 'green'); }} className="flex-1 py-3 rounded-xl bg-[#7BA05B] text-white font-bold active:scale-95 transition-all shadow-md text-sm">Got it!</button>
                      </div>
                    </div>
                  </div>
-               ) : <div className="text-center text-[#A69B95] mt-10">All caught up!</div>}
+               ) : (
+                 <div className="w-full h-full bg-white border border-[#EAE1D8] rounded-[2rem] flex flex-col items-center justify-center text-[#A69B95]">
+                   <CheckCircle2 size={40} className="mb-2 text-[#EAE1D8]"/>
+                   <p className="font-bold">You're all caught up!</p>
+                 </div>
+               )}
             </div>
           </div>
         )}
+
+        {/* --- CHAT TAB (Restored Full Tab) --- */}
+        {activeTab === 'chat' && (
+          <div className="flex flex-col animate-in fade-in" style={{ height: 'calc(100vh - 180px)' }}>
+            <div className="flex justify-between items-center mb-3 px-2 bg-white/50 py-2 rounded-xl backdrop-blur-sm border border-[#EAE1D8]">
+              <p className="text-[11px] text-[#D97757] font-bold uppercase tracking-wider flex items-center gap-1.5"><HelpCircle size={14}/> Grammar Coach</p>
+              <button onClick={() => {localStorage.removeItem('fluency_chat'); setChatMessages([{ role: 'ai', text: 'Hey! I am your personal English coach. What is on your mind today?' }]);}} className="p-1.5 text-[#D97757] bg-white rounded-lg shadow-sm border border-[#F2DCC9]"><Trash2 size={14} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-5 no-scrollbar pb-4 pr-1">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`p-4 max-w-[85%] rounded-[1.5rem] text-[16px] shadow-sm leading-relaxed ${msg.role === 'user' ? 'bg-[#3E322C] text-white rounded-br-sm' : 'bg-white text-[#3E322C] border border-[#EAE1D8] rounded-bl-sm font-serif'}`}>
+                    {msg.text.split('\n').map((line, j) => <p key={j} className={line.startsWith('-') || line.startsWith('*') ? 'ml-3 mt-1 font-bold text-[#D97757]' : 'mt-1'}>{line}</p>)}
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+            <div className="relative shrink-0 mt-2">
+              <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onFocus={() => setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 300)} placeholder="Tell me about your day..." className="w-full p-4 pr-14 bg-white rounded-2xl border border-[#EAE1D8] shadow-sm text-[16px] outline-none focus:border-[#D97757] transition-colors" onKeyDown={(e) => e.key === 'Enter' && handleChatSend()} />
+              <button onClick={handleChatSend} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-[#D97757] text-white rounded-xl shadow-md active:scale-90 transition-all"><Send size={16} /></button>
+            </div>
+          </div>
+        )}
+
       </div>
 
-      {/* --- NEW: FLOATING JOURNAL BUTTON --- */}
+      {/* --- FLOATING JOURNAL BUTTON --- */}
       <button 
         onClick={() => setIsJournalOpen(true)}
         className="fixed bottom-24 right-6 p-4 bg-[#3E322C] text-white rounded-full shadow-2xl active:scale-90 transition-all z-40 hover:bg-[#D97757]"
@@ -442,7 +495,7 @@ export default function StepByStepApp() {
         <PenTool size={24} />
       </button>
 
-      {/* --- NEW: JOURNAL MODAL --- */}
+      {/* --- JOURNAL MODAL --- */}
       {isJournalOpen && (
         <div className="fixed inset-0 bg-[#3E322C]/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-5 animate-in fade-in">
           <div className="bg-[#FDFBF7] w-full max-w-md h-[85vh] sm:h-[80vh] sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl relative flex flex-col border border-[#EAE1D8] animate-in slide-in-from-bottom-10">
@@ -514,11 +567,12 @@ export default function StepByStepApp() {
         </div>
       )}
 
-      {/* BOTTOM NAV */}
+      {/* BOTTOM NAV (Restored 4 Tabs) */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-[#EAE1D8] px-6 py-4 flex justify-between items-end z-30 shadow-[0_-10px_40px_rgba(62,50,44,0.03)] pb-6">
         <NavBtn active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Search size={22} />} label="Search" />
         <NavBtn active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<Clock size={22} />} label="History" />
         <NavBtn active={activeTab === 'difficult'} onClick={() => setActiveTab('difficult')} icon={<Layers size={22} />} label="Practice" />
+        <NavBtn active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} icon={<MessageSquare size={22} />} label="Coach" />
       </footer>
     </div>
   );
