@@ -18,22 +18,18 @@ export default function StepByStepApp() {
   
   const [selectedDate, setSelectedDate] = useState<string>('');
   
-  // Chat Tab State
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<{role: string, text: string}[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Practice Tab State (Split Screen)
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
 
-  // Floating Journal State
   const [isJournalOpen, setIsJournalOpen] = useState(false);
   const [journalInput, setJournalInput] = useState('');
   const [journalChat, setJournalChat] = useState<{role: string, text: string, feedback?: any}[]>([]);
   const journalEndRef = useRef<HTMLDivElement>(null);
 
-  // Word Insights State
   const [insightLoading, setInsightLoading] = useState(false);
   const [activeInsightWord, setActiveInsightWord] = useState<string | null>(null);
   const [insightData, setInsightData] = useState<any>(null);
@@ -41,7 +37,6 @@ export default function StepByStepApp() {
   useEffect(() => {
     setIsMounted(true);
     setSelectedDate(new Date().toDateString());
-    
     const savedChat = localStorage.getItem('fluency_chat');
     if (savedChat) setChatMessages(JSON.parse(savedChat));
     else setChatMessages([{ role: 'ai', text: 'Hey! I am your personal English coach. We can talk about anything—your day, work, or hobbies.' }]);
@@ -90,17 +85,13 @@ export default function StepByStepApp() {
   const processAndSaveWord = async () => {
     const searchWord = word.toLowerCase().trim();
     if (!searchWord) return;
-    
     const existingWord = wordsList.find(w => w.text === searchWord);
     if (existingWord && existingWord.definition) {
       await updateDoc(doc(db, 'words', existingWord.id), { createdAt: serverTimestamp() });
-      setWord('');
-      return;
+      setWord(''); return;
     }
-    
     setLoading(true);
     try {
-      // PROMPT UPGRADE: Extreme strictness on grammarNote
       const prompt = `
         The user searched for the English word: "${searchWord}". 
         Provide strictly valid JSON with no markdown and no extra text.
@@ -116,59 +107,33 @@ export default function StepByStepApp() {
         10. "relatedVerb": if the word is a noun/adj, provide its verb form. If it IS a verb, return null.
         11. "pastTense": if the word is a verb, provide its past tense. Otherwise return null.
         12. "example": A practical sentence using the word.
-        13. "grammarNote": Strictly return null for 90% of words. Only provide a Hebrew string if the word has a highly irregular rule, a dangerous false-friend for Israelis, or a very tricky advanced nuance. NEVER output basic rules like adding 'ing' or 's'. If in doubt, return null.
+        13. "grammarNote": Strictly return null for 90% of words. Only provide a Hebrew string if the word has a highly irregular rule, a dangerous false-friend for Israelis, or a very tricky advanced nuance. NEVER output basic rules. If in doubt, return null.
         `;
-      
       const rawText = await fetchFromAPI(prompt);
       const cleanText = rawText.replace(/```(json)?/gi, "").replace(/```/g, "").trim();
       const data = JSON.parse(cleanText);
-      
       const wordToSave = data.corrected.toLowerCase();
       
-      if (existingWord) {
-        await updateDoc(doc(db, 'words', existingWord.id), { ...data, createdAt: serverTimestamp() });
-      } else {
+      if (existingWord) await updateDoc(doc(db, 'words', existingWord.id), { ...data, createdAt: serverTimestamp() });
+      else {
         const correctedExisting = wordsList.find(w => w.text === wordToSave);
-        if (correctedExisting) {
-          await updateDoc(doc(db, 'words', correctedExisting.id), { ...data, createdAt: serverTimestamp() });
-        } else {
-          await addDoc(collection(db, 'words'), { 
-            text: wordToSave, 
-            ...data, 
-            mastery: 'orange', 
-            isDifficult: false, 
-            createdAt: serverTimestamp(), 
-            dateString: new Date().toDateString() 
-          });
-        }
+        if (correctedExisting) await updateDoc(doc(db, 'words', correctedExisting.id), { ...data, createdAt: serverTimestamp() });
+        else await addDoc(collection(db, 'words'), { text: wordToSave, ...data, mastery: 'orange', isDifficult: false, createdAt: serverTimestamp(), dateString: new Date().toDateString() });
       }
       setWord('');
-    } catch (e: any) { 
-      alert(`Error fetching data: ${e.message}`); 
-    }
+    } catch (e: any) { alert(`Error fetching data: ${e.message}`); }
     setLoading(false);
   };
 
   const fetchWordInsight = async (wordToExplain: string) => {
-    if (activeInsightWord === wordToExplain) {
-      setActiveInsightWord(null); 
-      return;
-    }
-    setActiveInsightWord(wordToExplain);
-    setInsightData(null);
-    setInsightLoading(true);
+    if (activeInsightWord === wordToExplain) { setActiveInsightWord(null); return; }
+    setActiveInsightWord(wordToExplain); setInsightData(null); setInsightLoading(true);
     try {
-      const prompt = `The user wants an insight on the English word: "${wordToExplain}". Provide strictly valid JSON explaining its nuance IN ENGLISH. Format:
-      {
-        "usage": "Precise English explanation of exactly WHEN to use this word, highlighting its nuance compared to basic synonyms.",
-        "context": "A short, practical English sentence showing it in action."
-      }`;
+      const prompt = `The user wants an insight on the English word: "${wordToExplain}". Provide strictly valid JSON explaining its nuance IN ENGLISH. Format: {"usage": "Precise English explanation of exactly WHEN to use this word, highlighting its nuance compared to basic synonyms.", "context": "A short, practical English sentence showing it in action."}`;
       const rawText = await fetchFromAPI(prompt);
       const cleanText = rawText.replace(/```(json)?/gi, "").replace(/```/g, "").trim();
       setInsightData(JSON.parse(cleanText));
-    } catch (e) {
-      setInsightData({ usage: "Error loading insight.", context: "-" });
-    }
+    } catch (e) { setInsightData({ usage: "Error loading insight.", context: "-" }); }
     setInsightLoading(false);
   };
 
@@ -177,22 +142,13 @@ export default function StepByStepApp() {
     const userText = journalInput.trim();
     setJournalChat(prev => [...prev, { role: 'user', text: userText }]);
     setJournalInput('');
-
     try {
-      const prompt = `The user wrote a daily action in English to practice: "${userText}". Act as an expert English teacher. Provide strictly valid JSON feedback.
-      {
-        "isCorrect": boolean,
-        "explanation": "Clear, encouraging explanation in Hebrew of any mistakes (if perfect, explain briefly why it's good)",
-        "correction": "The grammatically correct version (if needed, else null)",
-        "naturalAlternative": "A more native/natural/common way to say it (if applicable)"
-      }`;
+      const prompt = `The user wrote a daily action in English to practice: "${userText}". Act as an expert English teacher. Provide strictly valid JSON feedback. {"isCorrect": boolean, "explanation": "Clear, encouraging explanation in Hebrew of any mistakes (if perfect, explain briefly why it's good)", "correction": "The grammatically correct version (if needed, else null)", "naturalAlternative": "A more native/natural/common way to say it (if applicable)"}`;
       const rawText = await fetchFromAPI(prompt);
       const cleanText = rawText.replace(/```(json)?/gi, "").replace(/```/g, "").trim();
       const feedbackData = JSON.parse(cleanText);
       setJournalChat(prev => [...prev, { role: 'ai', text: '', feedback: feedbackData }]);
-    } catch (e) {
-      setJournalChat(prev => [...prev, { role: 'ai', text: '', feedback: { explanation: "שגיאה בחיבור לשרת, נסה שוב." } }]);
-    }
+    } catch (e) { setJournalChat(prev => [...prev, { role: 'ai', text: '', feedback: { explanation: "שגיאה בחיבור לשרת, נסה שוב." } }]); }
   };
 
   const handleChatSend = async () => {
@@ -202,14 +158,10 @@ export default function StepByStepApp() {
     setChatInput('');
     try {
       const history = chatMessages.slice(-10).map(m => `${m.role === 'ai' ? 'COACH' : 'USER'}: ${m.text}`).join('\n');
-      const prompt = `You are a freestyle English conversation partner and expert language coach. The user wants to talk freely. 
-      CRITICAL RULE: Monitor their English. If they make ANY grammar or phrasing mistake, politely point it out, explain why, and show the correct way BEFORE continuing.
-      \nHistory:\n${history}\nUSER: ${userMsg}\nCOACH:`;
+      const prompt = `You are a freestyle English conversation partner and expert language coach. The user wants to talk freely. CRITICAL RULE: Monitor their English. If they make ANY grammar or phrasing mistake, politely point it out, explain why, and show the correct way BEFORE continuing.\nHistory:\n${history}\nUSER: ${userMsg}\nCOACH:`;
       const responseText = await fetchFromAPI(prompt);
       setChatMessages(prev => [...prev, { role: 'ai', text: responseText }]);
-    } catch (e: any) { 
-      setChatMessages(prev => [...prev, { role: 'ai', text: `⚠️ Connection Error.` }]); 
-    }
+    } catch (e: any) { setChatMessages(prev => [...prev, { role: 'ai', text: `⚠️ Connection Error.` }]); }
   };
 
   const handleSwipeAction = async (id: string, action: 'green' | 'red') => {
@@ -221,8 +173,7 @@ export default function StepByStepApp() {
   const groupedHistory = useMemo(() => {
     const groups: any = { recent: {}, older: {} };
     if (!isMounted) return groups;
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0);
     wordsList.forEach(w => {
       const d = w.dateString || 'Unknown';
       const wordDate = new Date(d);
@@ -242,7 +193,6 @@ export default function StepByStepApp() {
   }, [wordsList, isMounted]);
 
   const recentDates = Object.keys(groupedHistory.recent).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  
   const redWords = wordsList.filter(w => w.mastery === 'red' || w.isDifficult);
   const currentPracticeWord = redWords[activeCardIndex] || redWords[0];
 
@@ -253,8 +203,6 @@ export default function StepByStepApp() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] font-sans text-[#3E322C] antialiased pb-24" dir="ltr">
-      
-      {/* BULLETPROOF HEADER LOGO (CSS Based) */}
       <header className="pt-10 pb-4 px-6 flex justify-center items-center">
          <div className="bg-[#1a2433] text-white font-black text-[22px] px-5 py-2.5 rounded-2xl tracking-wide shadow-md flex items-center justify-center select-none cursor-default">
            Fluency<span className="text-[#D97757]">.</span>
@@ -267,28 +215,14 @@ export default function StepByStepApp() {
         {activeTab === 'home' && (
           <div className="animate-in fade-in duration-500 pb-10">
             <div className="w-full relative mb-6">
-              <input 
-                type="text" 
-                value={word} 
-                onChange={(e) => setWord(e.target.value)} 
-                placeholder="Search a word..." 
-                disabled={loading} 
-                className="w-full p-4 pl-12 bg-white rounded-2xl border border-[#EAE1D8] shadow-sm text-[16px] font-bold outline-none focus:border-[#D97757] transition-colors disabled:opacity-60" 
-                onKeyDown={(e) => e.key === 'Enter' && processAndSaveWord()} 
-              />
+              <input type="text" value={word} onChange={(e) => setWord(e.target.value)} placeholder="Search a word..." disabled={loading} className="w-full p-4 pl-12 bg-white rounded-2xl border border-[#EAE1D8] shadow-sm text-[16px] font-bold outline-none focus:border-[#D97757] transition-colors disabled:opacity-60" onKeyDown={(e) => e.key === 'Enter' && processAndSaveWord()} />
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#A69B95]" size={18} />
               {loading && <Loader2 className="absolute right-5 top-1/2 -translate-y-1/2 text-[#D97757] animate-spin" size={18} />}
             </div>
-
             {loading ? (
-              <div className="w-full flex flex-col items-center space-y-4 animate-pulse pt-8">
-                 <div className="h-12 bg-[#EAE1D8] rounded-xl w-3/4"></div>
-                 <div className="h-4 bg-[#EAE1D8] rounded-lg w-1/2"></div>
-                 <div className="h-48 w-full bg-white rounded-[2rem] mt-4"></div>
-              </div>
+              <div className="w-full flex flex-col items-center space-y-4 animate-pulse pt-8"><div className="h-12 bg-[#EAE1D8] rounded-xl w-3/4"></div><div className="h-4 bg-[#EAE1D8] rounded-lg w-1/2"></div><div className="h-48 w-full bg-white rounded-[2rem] mt-4"></div></div>
             ) : wordsList[0] ? (
               <div className="w-full bg-white p-8 rounded-[2rem] shadow-sm border border-[#EAE1D8] mb-8 relative">
-                
                 <div className="flex flex-col items-center justify-center text-center mb-8">
                   <h2 className="text-[44px] font-serif font-black capitalize text-[#3E322C] leading-none mb-4">{wordsList[0].text}</h2>
                   <div className="flex items-center gap-4 bg-[#FDFBF7] px-6 py-3 rounded-full border border-[#EAE1D8] shadow-sm cursor-pointer active:scale-95 transition-all" onClick={() => speak(wordsList[0].text)}>
@@ -298,21 +232,13 @@ export default function StepByStepApp() {
                     </div>
                   </div>
                 </div>
-                
                 <div className="mb-6 pb-6 border-b border-[#F3EFE9] text-center">
                   <p className="text-[24px] font-bold text-[#7BA05B] mb-3">{wordsList[0].translation}</p>
-                  {wordsList[0].partOfSpeech && (
-                    <span className="text-[13px] font-bold text-[#4285F4] uppercase tracking-wider block mb-2">{wordsList[0].partOfSpeech}</span>
-                  )}
+                  {wordsList[0].partOfSpeech && <span className="text-[13px] font-bold text-[#4285F4] uppercase tracking-wider block mb-2">{wordsList[0].partOfSpeech}</span>}
                   <p className="text-[16px] text-[#3E322C] leading-snug">{wordsList[0].definition}</p>
                 </div>
-
                 <div className="mb-6 space-y-3">
-                  {[
-                    { label: "Verb", value: wordsList[0].relatedVerb },
-                    { label: "Noun", value: wordsList[0].relatedNoun },
-                    { label: "Past Tense", value: wordsList[0].pastTense }
-                  ].map(item => item.value && (
+                  {[{ label: "Verb", value: wordsList[0].relatedVerb }, { label: "Noun", value: wordsList[0].relatedNoun }, { label: "Past Tense", value: wordsList[0].pastTense }].map(item => item.value && (
                     <div key={item.label}>
                       <div className="flex items-baseline gap-2">
                          <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0 text-left">{item.label}:</span>
@@ -321,26 +247,18 @@ export default function StepByStepApp() {
                       {activeInsightWord === item.value && (
                         <div className="mt-2 p-4 bg-[#FDFBF7] border border-[#EAE1D8] rounded-xl text-left" dir="ltr">
                            {insightLoading ? <Loader2 size={16} className="animate-spin text-[#D97757] mx-auto" /> : insightData && (
-                             <div className="text-sm space-y-2">
-                               <p><strong className="text-[#3E322C]">Usage:</strong> <span className="text-[#7A6D65]">{insightData.usage}</span></p>
-                               <p><strong className="text-[#3E322C]">Example:</strong> <span className="text-[#7BA05B]">{insightData.context}</span></p>
-                             </div>
+                             <div className="text-sm space-y-2"><p><strong className="text-[#3E322C]">Usage:</strong> <span className="text-[#7A6D65]">{insightData.usage}</span></p><p><strong className="text-[#3E322C]">Example:</strong> <span className="text-[#7BA05B]">{insightData.context}</span></p></div>
                            )}
                         </div>
                       )}
                     </div>
                   ))}
-
                   {wordsList[0].synonyms && wordsList[0].synonyms.length > 0 && (
                      <div className="flex items-baseline gap-2 pt-1">
                        <span className="text-[13px] font-bold text-[#A69B95] w-24 shrink-0 text-left">Synonyms:</span>
                        <div className="flex flex-wrap gap-1.5">
                          {wordsList[0].synonyms.map((s: string, idx: number) => (
-                           <div key={idx} className="flex flex-col">
-                             <span onClick={() => fetchWordInsight(s)} className={`text-[13px] font-medium px-2 py-0.5 rounded-md border cursor-pointer transition-colors ${activeInsightWord === s ? 'bg-[#FCF8F2] border-[#F2DCC9] text-[#DDA77B]' : 'bg-[#FDFBF7] border-[#EAE1D8] text-[#3E322C] hover:border-[#D97757]'}`}>
-                               {s}
-                             </span>
-                           </div>
+                           <span key={idx} onClick={() => fetchWordInsight(s)} className={`text-[13px] font-medium px-2 py-0.5 rounded-md border cursor-pointer transition-colors ${activeInsightWord === s ? 'bg-[#FCF8F2] border-[#F2DCC9] text-[#DDA77B]' : 'bg-[#FDFBF7] border-[#EAE1D8] text-[#3E322C] hover:border-[#D97757]'}`}>{s}</span>
                          ))}
                        </div>
                      </div>
@@ -348,21 +266,15 @@ export default function StepByStepApp() {
                   {wordsList[0].synonyms?.includes(activeInsightWord) && (
                       <div className="mt-2 p-4 bg-[#FCF8F2] border border-[#F2DCC9] rounded-xl text-left animate-in fade-in" dir="ltr">
                          {insightLoading ? <Loader2 size={16} className="animate-spin text-[#D97757] mx-auto" /> : insightData && (
-                           <div className="text-sm space-y-2">
-                             <p><strong className="text-[#DDA77B] text-base">{activeInsightWord}</strong></p>
-                             <p><strong className="text-[#3E322C]">Usage:</strong> <span className="text-[#7A6D65]">{insightData.usage}</span></p>
-                             <p><strong className="text-[#3E322C]">Example:</strong> <span className="text-[#7BA05B] italic">"{insightData.context}"</span></p>
-                           </div>
+                           <div className="text-sm space-y-2"><p><strong className="text-[#DDA77B] text-base">{activeInsightWord}</strong></p><p><strong className="text-[#3E322C]">Usage:</strong> <span className="text-[#7A6D65]">{insightData.usage}</span></p><p><strong className="text-[#3E322C]">Example:</strong> <span className="text-[#7BA05B] italic">"{insightData.context}"</span></p></div>
                          )}
                       </div>
                   )}
                 </div>
-
                 <div className="space-y-3">
                   <div className="bg-[#FCF8F2] p-5 rounded-2xl border border-[#F2DCC9]">
                     <p className="text-[16px] leading-relaxed text-[#DDA77B] font-medium italic">"{wordsList[0].example}"</p>
                   </div>
-                  
                   {wordsList[0].grammarNote && (
                     <div className="bg-[#F1F4EE] p-4 rounded-xl border border-[#DCE4D7] text-right" dir="rtl">
                       <p className="text-[11px] font-bold text-[#7BA05B] uppercase tracking-wider mb-1 flex items-center gap-1.5"><Sparkles size={14}/> ניואנס שחשוב להכיר</p>
@@ -375,21 +287,33 @@ export default function StepByStepApp() {
           </div>
         )}
 
-        {/* --- HISTORY TAB --- */}
+        {/* --- HISTORY TAB (RESTORED SWIPE) --- */}
         {activeTab === 'history' && (
           <div className="animate-in fade-in duration-500 mt-2">
-             <div className="space-y-4 pb-10">
-              {/* @ts-ignore */}
-              {(groupedHistory.recent[selectedDate] || groupedHistory.older[selectedDate] || []).map((item: any) => (
-                <div key={item.id} className="p-5 flex justify-between items-center shadow-md border border-[#EAE1D8] rounded-3xl bg-white">
-                  <div className="flex-1">
-                    <h4 className="text-[20px] font-black font-serif capitalize text-[#3E322C]">{item.text}</h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="text-[12px] font-bold text-[#7BA05B]">{item.translation}</p>
+            <div className="flex gap-4 overflow-x-auto pb-6 pt-4 px-2 no-scrollbar items-end">
+              {recentDates.map(date => {
+                const count = groupedHistory.recent[date]?.length || 0;
+                const isSelected = selectedDate === date;
+                const barHeight = Math.max(12, Math.min(40, count * 4)); 
+                return (
+                  <div key={date} className="flex flex-col items-center gap-2 cursor-pointer" onClick={() => setSelectedDate(date)}>
+                    <span className="text-[10px] font-black text-[#A69B95]">{count}</span>
+                    <div className={`w-8 rounded-t-sm transition-all duration-300 ${isSelected ? 'bg-[#3E322C]' : 'bg-[#EAE1D8]'}`} style={{ height: `${barHeight}px` }}></div>
+                    <div className={`px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-colors ${isSelected ? 'bg-[#3E322C] text-white shadow-md' : 'bg-white border border-[#EAE1D8] text-[#7A6D65]'}`}>
+                      {date === new Date().toDateString() ? 'TODAY' : date.split(' ').slice(0, 1).join('')}
                     </div>
                   </div>
-                  <button onClick={() => speak(item.text)} className="p-3 bg-[#FDFBF7] rounded-full text-[#3E322C] border border-[#EAE1D8] active:scale-90"><Volume2 size={18} /></button>
-                </div>
+                )
+              })}
+            </div>
+            <p className="text-[10px] font-bold text-[#A69B95] text-center mb-4 mt-2 uppercase tracking-widest">Swipe Right = Practice • Swipe Left = Known</p>
+            <div className="space-y-4 pb-10">
+              {/* @ts-ignore */}
+              {(groupedHistory.recent[selectedDate] || groupedHistory.older[selectedDate] || []).sort((a,b) => {
+                 const order: any = { red: 1, orange: 2, green: 3 };
+                 return (order[a.mastery] || 4) - (order[b.mastery] || 4);
+              }).map((item: any) => (
+                <SwipeableCard key={item.id} item={item} onSwipe={handleSwipeAction} onSpeak={speak} />
               ))}
             </div>
           </div>
@@ -472,15 +396,10 @@ export default function StepByStepApp() {
 
       </div>
 
-      {/* --- FLOATING JOURNAL BUTTON --- */}
-      <button 
-        onClick={() => setIsJournalOpen(true)}
-        className="fixed bottom-24 right-6 p-4 bg-[#3E322C] text-white rounded-full shadow-2xl active:scale-90 transition-all z-40 hover:bg-[#D97757]"
-      >
+      <button onClick={() => setIsJournalOpen(true)} className="fixed bottom-24 right-6 p-4 bg-[#3E322C] text-white rounded-full shadow-2xl active:scale-90 transition-all z-40 hover:bg-[#D97757]">
         <PenTool size={24} />
       </button>
 
-      {/* --- JOURNAL MODAL --- */}
       {isJournalOpen && (
         <div className="fixed inset-0 bg-[#3E322C]/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-5 animate-in fade-in">
           <div className="bg-[#FDFBF7] w-full max-w-md h-[85vh] sm:h-[80vh] sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl relative flex flex-col border border-[#EAE1D8] animate-in slide-in-from-bottom-10">
@@ -537,14 +456,7 @@ export default function StepByStepApp() {
 
             <div className="p-4 bg-white border-t border-[#EAE1D8]">
               <div className="relative">
-                <input 
-                  type="text" 
-                  value={journalInput} 
-                  onChange={(e) => setJournalInput(e.target.value)} 
-                  placeholder="I am..." 
-                  className="w-full p-4 pr-14 bg-[#FDFBF7] rounded-2xl border border-[#EAE1D8] text-[16px] outline-none focus:border-[#D97757]" 
-                  onKeyDown={(e) => e.key === 'Enter' && handleJournalSend()} 
-                />
+                <input type="text" value={journalInput} onChange={(e) => setJournalInput(e.target.value)} placeholder="I am..." className="w-full p-4 pr-14 bg-[#FDFBF7] rounded-2xl border border-[#EAE1D8] text-[16px] outline-none focus:border-[#D97757]" onKeyDown={(e) => e.key === 'Enter' && handleJournalSend()} />
                 <button onClick={handleJournalSend} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-[#D97757] text-white rounded-xl shadow-md"><Send size={16} /></button>
               </div>
             </div>
@@ -552,7 +464,6 @@ export default function StepByStepApp() {
         </div>
       )}
 
-      {/* BOTTOM NAV */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-[#EAE1D8] px-6 py-4 flex justify-between items-end z-30 shadow-[0_-10px_40px_rgba(62,50,44,0.03)] pb-6">
         <NavBtn active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Search size={22} />} label="Search" />
         <NavBtn active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<Clock size={22} />} label="History" />
@@ -569,5 +480,42 @@ function NavBtn({ active, onClick, icon, label }: any) {
       <div className={`p-2.5 rounded-[1.2rem] transition-colors ${active ? 'bg-[#FCF8F2] text-[#DDA77B] shadow-sm border border-[#F2DCC9]' : ''}`}>{icon}</div>
       <span className={`text-[10px] uppercase tracking-widest ${active ? 'font-black text-[#3E322C]' : 'font-bold'}`}>{label}</span>
     </button>
+  );
+}
+
+// RESTORED SWIPE COMPONENT
+function SwipeableCard({ item, onSwipe, onSpeak }: any) {
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const startX = useRef(0);
+  const handleTouchMove = (e: any) => {
+    const diff = e.touches[0].clientX - startX.current;
+    if (Math.abs(diff) < 120) setSwipeOffset(diff);
+  };
+  const handleTouchEnd = () => {
+    if (swipeOffset > 60) onSwipe(item.id, 'red');
+    else if (swipeOffset < -60) onSwipe(item.id, 'green');
+    setSwipeOffset(0);
+  };
+  return (
+    <div className="relative rounded-3xl overflow-hidden bg-[#F3EFE9]">
+      <div className="absolute inset-0 flex justify-between items-center px-6">
+        <div className="flex items-center gap-2 text-[#7BA05B] font-bold text-[11px] uppercase tracking-widest"><CheckCircle2 size={16} /> Known</div>
+        <div className="flex items-center gap-2 text-[#D97757] font-bold text-[11px] uppercase tracking-widest">Practice <ChevronRight size={16} /></div>
+      </div>
+      
+      <div onTouchStart={(e) => startX.current = e.touches[0].clientX} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+        style={{ transform: `translateX(${swipeOffset}px)`, transition: 'transform 0.2s' }}
+        className={`relative z-10 p-5 flex justify-between items-center shadow-md border border-[#EAE1D8] rounded-3xl ${item.mastery === 'red' ? 'bg-[#FDF6ED] border-[#F2DCC9]' : item.mastery === 'green' ? 'bg-[#F1F4EE] border-[#DCE4D7]' : 'bg-white'}`}>
+        <div className="flex-1">
+          <h4 className="text-[20px] font-black font-serif capitalize text-[#3E322C]">{item.text}</h4>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-[12px] font-bold text-[#7BA05B]">{item.translation}</p>
+            <span className="text-[12px] text-[#EAE1D8]">|</span>
+            <p className="text-[12px] text-[#A69B95] italic font-light tracking-wide">{item.soundsLike?.toLowerCase()}</p>
+          </div>
+        </div>
+        <button onClick={() => onSpeak(item.text)} className="p-3 bg-[#FDFBF7] rounded-full text-[#3E322C] border border-[#EAE1D8] active:scale-90 shadow-sm ml-2"><Volume2 size={18} /></button>
+      </div>
+    </div>
   );
 }
